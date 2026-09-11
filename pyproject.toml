@@ -1,0 +1,17 @@
+[project]
+name = "cancer-sniffing-fly"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Md.Sadiq", email = "mohammadsadiq4950@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+cancer-sniffing-fly = "cancer_sniffing_fly:main"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
