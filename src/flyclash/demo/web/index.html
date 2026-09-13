@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>FLYCLASH — connectome > fly > clash</title>
+<style>
+  body { margin: 0; background: #0b0f14; color: #cfd8dc; font: 13px/1.4 -apple-system, Helvetica, sans-serif; }
+  #top { display: flex; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #1e2a33; }
+  #top b { color: #4fd1c5; letter-spacing: 2px; }
+  #grid { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 80px); }
+  .pane { position: relative; border-right: 1px solid #1e2a33; }
+  .label { position: absolute; top: 8px; left: 12px; font-size: 11px; letter-spacing: 1px; color: #7a8a94; }
+  #left { display: flex; align-items: center; justify-content: center; font-size: 22px; color: #4fd1c5; }
+  #stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 8px 14px; border-top: 1px solid #1e2a33; }
+  .stat b { display: block; font-size: 20px; color: #fff; }
+  .stat span { font-size: 10px; color: #7a8a94; letter-spacing: 1px; }
+  #foot { padding: 4px 14px; font-size: 10px; color: #55666f; }
+</style>
+</head>
+<body>
+<div id="top"><b>FLYCLASH</b><span>CONNECTOME &gt; FLY &gt; CLASH OF CLANS</span><span id="state">WAITING</span></div>
+<div id="grid">
+  <div class="pane" id="left"><div class="label">FLY / SCOUTING</div><div id="verdict">—</div></div>
+  <div class="pane" id="right"><div class="label">FLYWIRE v783 / LIVE ACTIVITY</div></div>
+</div>
+<div id="stats">
+  <div class="stat"><b id="kc">0</b><span>KENYON CELLS ACTIVE</span></div>
+  <div class="stat"><b id="score">0.00</b><span>APPROACH − AVOID</span></div>
+  <div class="stat"><b id="stars">0</b><span>STARS LAST ATTACK</span></div>
+  <div class="stat"><b id="skips">0</b><span>NEXT PRESSES</span></div>
+</div>
+<div id="foot">FlyWire v783 (CC-BY 4.0) · MaleCNS v1.0 (CC-BY 4.0) · three-factor KC→MBON plasticity · no backprop</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const pane = document.getElementById('right');
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(pane.clientWidth, pane.clientHeight); pane.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, pane.clientWidth / pane.clientHeight, 1, 5000);
+camera.position.set(0, 0, 900);
+
+const data = await (await fetch('somas.json')).json();
+const n = data.xyz.length;
+const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+const mean = [0, 1, 2].map(k => data.xyz.reduce((s, p) => s + p[k], 0) / n);
+const base = new THREE.Color(0x2b3a44), classColors = {olfactory: 0x4fd1c5, ALPN: 0x63b3ed, Kenyon_Cell: 0xf6e05e, MBON: 0xf687b3, DAN: 0xfc8181, APL: 0xb794f4};
+const clsName = data.cls.map(i => data.classes[i]);
+const idxByClass = {};
+for (let i = 0; i < n; i++) {
+  const p = data.xyz[i];
+  pos[3*i] = (p[0] - mean[0]) / 800; pos[3*i+1] = -(p[1] - mean[1]) / 800; pos[3*i+2] = (p[2] - mean[2]) / 800;
+  const c = new THREE.Color(classColors[clsName[i]] ?? 0x2b3a44).multiplyScalar(classColors[clsName[i]] ? 0.35 : 1);
+  col.set([c.r, c.g, c.b], 3*i);
+  (idxByClass[clsName[i]] ??= []).push(i);
+}
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+const points = new THREE.Points(geo, new THREE.PointsMaterial({size: 2.2, vertexColors: true}));
+scene.add(points);
+
+const flash = new Map();  // point index -> decay
+function light(indices, hex) {
+  const c = new THREE.Color(hex);
+  for (const i of indices) { col.set([c.r, c.g, c.b], 3*i); flash.set(i, 1.0); }
+  geo.attributes.color.needsUpdate = true;
+}
+function tick() {
+  requestAnimationFrame(tick);
+  points.rotation.y += 0.002;
+  for (const [i, v] of flash) {
+    const nv = v - 0.01; if (nv <= 0) { flash.delete(i); const c = new THREE.Color(classColors[clsName[i]] ?? 0x2b3a44).multiplyScalar(classColors[clsName[i]] ? 0.35 : 1); col.set([c.r, c.g, c.b], 3*i); }
+    else flash.set(i, nv);
+  }
+  geo.attributes.color.needsUpdate = flash.size > 0;
+  renderer.render(scene, camera);
+}
+tick();
+
+const ws = new WebSocket('ws://localhost:8765');
+let skips = 0;
+ws.onmessage = ev => {
+  const m = JSON.parse(ev.data);
+  document.getElementById('state').textContent = m.state;
+  if (m.state === 'SCOUT_DECIDE' && m.kc_idx) {
+    light(idxByClass.olfactory ?? [], 0x4fd1c5);
+    setTimeout(() => light(idxByClass.ALPN ?? [], 0x63b3ed), 150);
+    const kcs = idxByClass.Kenyon_Cell ?? [];
+    setTimeout(() => light(m.kc_idx.map(i => kcs[i % kcs.length]), 0xf6e05e), 300);
+    setTimeout(() => light(idxByClass.MBON ?? [], m.attack ? 0x68d391 : 0xfc8181), 500);
+    document.getElementById('kc').textContent = m.kc_idx.length;
+    document.getElementById('score').textContent = m.score.toFixed(3);
+    document.getElementById('verdict').textContent = m.attack ? 'ATTACK' : 'NEXT';
+  }
+  if (m.state === 'NEXT') { skips++; document.getElementById('skips').textContent = skips; }
+  if (m.state === 'LEARN') { light(idxByClass.DAN ?? [], 0xfc8181); document.getElementById('stars').textContent = m.stars; }
+};
+</script>
+</body>
+</html>
