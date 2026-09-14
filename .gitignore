@@ -14,11 +14,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
+/lib/
+/lib64/
+/parts/
 sdist/
-var/
+/var/
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Downloaded datasets (see docs/plan.md)
+data/raw/
+.DS_Store
+shots/
+
+# generated at runtime / downloaded (never commit)
+data/subway/profile/
+data/subway/frames/
+data/subway/reset_debug/
+data/subway/*.csv
+data/subway/*.json
+data/subway/*.png
+data/subway/*.npz
+data/yolo/
+data/runs/
+yolov8n.pt
+# private lab data supplied by the user, not for a public repo
+data/raw_data/
+data/all_cancer_data/
+src/flyclash/demo/web/somas.json
