@@ -1,16 +1,33 @@
 [project]
-name = "cancer-sniffing-fly"
+name = "flyclash"
 version = "0.1.0"
-description = "Add your description here"
+description = "A fruit fly connectome (FlyWire) decides whether and where to attack in Clash of Clans"
 readme = "README.md"
 authors = [
     { name = "Md.Sadiq", email = "mohammadsadiq4950@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "numpy>=2",
+    "pandas>=2.2",
+    "pyarrow>=17",
+    "scipy>=1.14",
+    "opencv-python-headless>=4.10",
+    "websockets>=13",
+    "ruff>=0.16.7",
+    "playwright>=1.62.0",
+    "matplotlib>=3.11.2",
+]
+
+[project.optional-dependencies]
+ocr = ["rapidocr-onnxruntime>=1.4"]
+yolo = ["ultralytics>=8.3"]
 
 [project.scripts]
-cancer-sniffing-fly = "cancer_sniffing_fly:main"
+flyclash = "flyclash.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
 
 [build-system]
 requires = ["uv_build>=0.12.8,<0.13.0"]
